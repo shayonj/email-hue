@@ -1,13 +1,14 @@
 require "google/apis/gmail_v1"
 require "google/api_client/client_secrets"
 require "date"
+require "aws-sdk"
 
 class Mailer
   FROM = Date.today.prev_day.to_s
   TO = Date.today.next_day.to_s
-  FILE = "tmp/ids"
+  FILE = "ids"
 
-  attr_reader :service, :user_id
+  attr_reader :service, :user_id, :s3_file
 
   def initialize
     client = Google::APIClient::ClientSecrets.new({
@@ -22,24 +23,27 @@ class Mailer
     @service.authorization = client.to_authorization
 
     @user_id = "me"
+
+    resource = Aws::S3::Resource.new(
+      credentials: Aws::Credentials.new(ENV["EMAIL_HUE_AWS_ACCESS_KEY"], ENV["EMAIL_HUE_AWS_SECRET_KEY"]),
+      region: ENV["EMAIL_HUE_AWS_BUCKET_REGION"]
+    )
+
+    @s3_file = resource.bucket(ENV["EMAIL_HUE_AWS_BUCKET_NAME"]).object(FILE)
   end
 
   def any_new_messages?
     result = !(remote_messages - stored_messages).empty?
 
-    update_locally_stored_messages(remote_messages)
+    update_stored_messages(remote_messages)
 
     result
   end
 
   private def stored_messages
-    messages = []
-    return messages unless File.exist?(FILE)
+    return [] unless @s3_file.exists?
 
-    File.foreach(FILE) do |line|
-      messages.push(line.gsub("\n", ""))
-    end
-    messages
+    @s3_file.get.body.read.split("\n")
   end
 
   private def remote_messages
@@ -51,7 +55,7 @@ class Mailer
     @remote_messages = result.messages.map { |r| r.id }
   end
 
-  private def update_locally_stored_messages(ids)
-    File.open(FILE, "w+") { |f| f.puts(ids) }
+  private def update_stored_messages(ids)
+    @s3_file.put(body: ids.join("\n"))
   end
 end
