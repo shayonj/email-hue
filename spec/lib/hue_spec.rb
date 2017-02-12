@@ -12,10 +12,10 @@ RSpec.describe Hue do
     end
   end
 
-  context "#lights_on" do
+  context "#blink!" do
     it "returns true when a new message is present" do
       expect(HTTParty).to receive(:put)
-      hue.lights_on
+      hue.blink!
     end
   end
 end

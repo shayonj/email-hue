@@ -4,6 +4,6 @@ class Notify
   def self.publish
     should_publish = Mailer.new.any_new_messages?
 
-    Hue.new.lights_on if should_publish
+    Hue.new.blink! if should_publish
   end
 end
