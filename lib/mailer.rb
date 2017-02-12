@@ -52,6 +52,8 @@ class Mailer
     query = "is:unread after:#{FROM} before:#{TO}"
     result = service.list_user_messages(user_id, q: query)
 
+    return [] if result.result_size_estimate == 0
+
     @remote_messages = result.messages.map { |r| r.id }
   end
 
