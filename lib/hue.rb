@@ -3,5 +3,6 @@ class Hue
   end
 
   def lights_on
+    puts "blink"
   end
 end
